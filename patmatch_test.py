@@ -1,7 +1,7 @@
 
 import unittest
 
-from patmatch import match, MatchValues, ValueBox, all, some, pred, cons
+from patmatch import match, CapturedValues, ValueBox, all, some, pred, cons
 
 class TestPatmatch(unittest.TestCase):
     def testValue(self):
@@ -27,48 +27,48 @@ class TestPatmatch(unittest.TestCase):
 
 
     def testCaptureValues(self):
-        mv = MatchValues()
-        assert match(mv.i, 3)
-        self.assertEquals(3, mv.i)
+        cv = CapturedValues()
+        assert match(cv.i, 3)
+        self.assertEquals(3, cv.i)
 
 
     def testCaptureBadMatch(self):
-        mv = MatchValues()
-        assert not match([(mv.a, mv.b), int], [(5, "bar"), "foo"])
+        cv = CapturedValues()
+        assert not match([(cv.a, cv.b), int], [(5, "bar"), "foo"])
         try:
-            l = mv.a
-            print mv._values
+            l = cv.a
+            print cv._values
             assert False
         except KeyError:
             pass
 
 
     def testDeepCapture(self):
-        mv = MatchValues()
-        assert match([[[mv.a, mv.b], (mv.c, mv.d)], 5], [[[1, 2], (3, 4)], 5])
-        self.assertEquals(1, mv.a)
-        self.assertEquals(2, mv.b)
-        self.assertEquals(3, mv.c)
-        self.assertEquals(4, mv.d)
+        cv = CapturedValues()
+        assert match([[[cv.a, cv.b], (cv.c, cv.d)], 5], [[[1, 2], (3, 4)], 5])
+        self.assertEquals(1, cv.a)
+        self.assertEquals(2, cv.b)
+        self.assertEquals(3, cv.c)
+        self.assertEquals(4, cv.d)
 
     
     def testAll(self):
-        mv = MatchValues()
-        assert match(all(mv.a, int), 4)
-        self.assertEquals(4, mv.a)
-        assert not match(all(mv.a, int), 9)
+        cv = CapturedValues()
+        assert match(all(cv.a, int), 4)
+        self.assertEquals(4, cv.a)
+        assert not match(all(cv.a, int), 9)
 
     
     def testSome(self):
-        mv = MatchValues()
+        cv = CapturedValues()
         assert match(some(int, str), "abc")
         assert not match(some(int, str), [])
-        assert match((mv.a, (mv.b, (mv.c, ()))), (1, (2, (3, ()))))
-        self.assertEquals(1, mv.a)
+        assert match((cv.a, (cv.b, (cv.c, ()))), (1, (2, (3, ()))))
+        self.assertEquals(1, cv.a)
         
-        mv = MatchValues()
-        assert match(some((mv.a, (mv.b, (mv.c, ()))), [mv.a, mv.b, mv.c]), (1, (2, (3, ()))))
-        self.assertEquals(1, mv.a)
+        cv = CapturedValues()
+        assert match(some((cv.a, (cv.b, (cv.c, ()))), [cv.a, cv.b, cv.c]), (1, (2, (3, ()))))
+        self.assertEquals(1, cv.a)
 
 
     def testPredicate(self):
@@ -77,19 +77,19 @@ class TestPatmatch(unittest.TestCase):
 
     
     def testCons(self):
-        mv = MatchValues()
-        assert match(cons(mv.a, mv.b), [1,2,3])
-        self.assertEquals(1, mv.a)
-        self.assertEquals([2, 3], mv.b)
+        cv = CapturedValues()
+        assert match(cons(cv.a, cv.b), [1,2,3])
+        self.assertEquals(1, cv.a)
+        self.assertEquals([2, 3], cv.b)
         
 
-class TestMatchValues():
+class TestCapturedValues(unittest.TestCase):
     def testSimple(self):
-        mv = MatchValues()
-        k = mv.k
-        k.set(7)
-        mv._close()
-        self.assertEquals(7, mv.k)
+        cv = CapturedValues()
+        k = cv.k
+        k.match(7, [])
+        cv._close()
+        self.assertEquals(7, cv.k)
 
 if __name__ == '__main__':
     unittest.main()
