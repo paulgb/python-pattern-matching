@@ -1,10 +1,9 @@
 
 import unittest
 
-from patmatch import match, MatchValues, ValueBox, all, some
+from patmatch import match, MatchValues, ValueBox, all, some, pred, cons
 
 class TestPatmatch(unittest.TestCase):
-    """
     def testValue(self):
         assert match(1, 1)
         assert not match(1, 'foo')
@@ -58,24 +57,32 @@ class TestPatmatch(unittest.TestCase):
         assert match(all(mv.a, int), 4)
         self.assertEquals(4, mv.a)
         assert not match(all(mv.a, int), 9)
-    """
 
     
     def testSome(self):
-        """
         mv = MatchValues()
         assert match(some(int, str), "abc")
         assert not match(some(int, str), [])
         assert match((mv.a, (mv.b, (mv.c, ()))), (1, (2, (3, ()))))
         self.assertEquals(1, mv.a)
-        """
         
         mv = MatchValues()
         assert match(some((mv.a, (mv.b, (mv.c, ()))), [mv.a, mv.b, mv.c]), (1, (2, (3, ()))))
         self.assertEquals(1, mv.a)
+
+
+    def testPredicate(self):
+        assert match(pred(lambda x: x > 4), 7)
+        assert not match(pred(lambda x: x > 4), 2)
+
+    
+    def testCons(self):
+        mv = MatchValues()
+        assert match(cons(mv.a, mv.b), [1,2,3])
+        self.assertEquals(1, mv.a)
+        self.assertEquals([2, 3], mv.b)
         
 
-"""
 class TestMatchValues():
     def testSimple(self):
         mv = MatchValues()
@@ -83,7 +90,6 @@ class TestMatchValues():
         k.set(7)
         mv._close()
         self.assertEquals(7, mv.k)
-"""
 
 if __name__ == '__main__':
     unittest.main()

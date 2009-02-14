@@ -1,25 +1,51 @@
 
-
 class MatchExpression():
     pass
 
 
+class MatchPredicate(MatchExpression):
+    def __init__(self, fun):
+        self.fun = fun
+
+    def match(self, value, match_values_box):
+        return self.fun(value)
+
+pred = MatchPredicate
+
+
+class MatchCons(MatchExpression):
+    # TODO: make cons efficient
+    
+    def __init__(self, car_pattern, cdr_pattern):
+        self.car_pattern = car_pattern
+        self.cdr_pattern = cdr_pattern
+    
+    def match(self, value, match_values_box):
+        if type(value) is not list:
+            return False
+        
+        if match_recur(self.car_pattern, value[0], match_values_box):
+            return match_recur(self.cdr_pattern, value[1:], match_values_box)
+
+        return False
+
+cons = MatchCons
+
+
 class ValueBox(MatchExpression):
-    def __init__(self, box):
+    def __init__(self, match_values):
         self.value = None
-        self.box = box
+        self.match_values = match_values
 
     def get(self):
         return self.value
 
     def match(self, value, match_values_box):
         if len(match_values_box) != 0:
-            assert match_values_box[0] is self.box
+            assert match_values_box[0] is self.match_values
         else:
-            #self.box._clear()
-            match_values_box.append(self.box)
+            match_values_box.append(self.match_values)
         self.value = value
-        print self.value
         return True
 
 
@@ -54,11 +80,11 @@ class MatchValues():
         self._clear()
 
     def __getattr__(self, name):
-        print name, self._read_mode, [(a, b.get()) for a, b in self._values.iteritems()]
         if self._read_mode:
             return self._values[name].get()
         else:
-            self._values[name] = ValueBox(self)
+            if name not in self._values:
+                self._values[name] = ValueBox(self)
             return self._values[name]
 
     def _close(self):
