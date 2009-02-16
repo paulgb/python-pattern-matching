@@ -1,3 +1,24 @@
+"""
+patmatch.py -- Pattern matching module for Python.
+
+This module gives python basic support for pattern matching
+inspired by Haskell, O'Caml, and Scheme.
+
+Author: Paul Butler     <paulgb@gmail.com>
+Copyright (C) 2009
+
+bzip license
+
+VERSION 0.1
+
+TODO:
+ - handle value capture properly when lazy matches like some or all are used 
+ - throw an error when value capture is used in multiple places
+ - readme file
+ - license file
+ - make cons reasonably fast
+ - better inline docs
+"""
 
 class MatchExpression():
     """
@@ -11,6 +32,74 @@ class MatchExpression():
     to match.
     """
     pass
+
+
+class MatchEq(MatchExpression):
+    """
+    Explicit equality match.
+
+    Matches only if subject is equal to the given value.
+    """
+    
+    def __init__(self, value):
+        self.value = value
+
+
+    def match(self, value, match_values_box):
+        return value == self.value
+
+eq = MatchEq
+
+
+class MatchOb(MatchExpression):
+    def __init__(self, *args, **patterns):
+        self.cls = None
+        if args:
+            self.cls = args[0]
+        self.patterns = patterns
+        
+
+    def match(self, value, match_values_box):
+        for attr, pattern in self.patterns.iteritems():
+            if not hasattr(value, attr):
+                return False
+            if not match_recur(pattern, getattr(value, attr), match_values_box):
+                return False
+        return True
+    
+ob = MatchOb
+
+
+class MatchDict(MatchExpression):
+    def __init__(self, **patterns):
+        self.patterns = patterns
+
+
+    def match(self, value, match_values_box):
+        for attr, pattern in self.patterns.iteritems():
+            if attr not in value:
+                return False
+            if not match_recur(pattern, value[attr], match_values_box):
+                return False
+        return True
+
+dt = MatchDict
+
+
+class MatchType(MatchExpression):
+    """
+    Explicit type match.
+
+    Matches only if the subject is an instance of the given type.
+    """
+
+    def __init__(self, type):
+        self.type = type
+
+    def match(self, value, match_values_box):
+        return isinstance(value, self.type)
+
+type_is = MatchType
 
 
 class MatchPredicate(MatchExpression):
