@@ -122,6 +122,8 @@ class MatchDict(MatchPattern):
     True
     >>> match(dt(a=4, b='foo'), {'a': 4, 'j': 9})
     False
+    >>> match(dt(), 3)
+    False
     """
 
     def __init__(self, **patterns):
@@ -129,6 +131,8 @@ class MatchDict(MatchPattern):
 
 
     def match(self, value, match_values_box, cap_val):
+        if not isinstance(value, dict):
+            return False
         for attr, pattern in self.patterns.iteritems():
             if attr not in value:
                 return False
@@ -223,7 +227,7 @@ class MatchCons(MatchPattern):
     
 
     def match(self, value, match_values_box, cap_val):
-        if type(value) is not list:
+        if not isinstance(value, list):
             return False
         
         if match_recur(self.car_pattern, value[0], match_values_box, cap_val):
@@ -426,7 +430,7 @@ def match_recur(pattern, subject, match_values_box, cap_val):
     if pattern == subject:
         return True
 
-    if type(pattern) is type:
+    if isinstance(pattern, type):
         return type(subject) is pattern
 
     if type(pattern) in [list, tuple]:
