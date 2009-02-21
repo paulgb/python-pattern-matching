@@ -12,12 +12,14 @@ bzip license
 VERSION 0.1
 
 TODO:
- - handle value capture properly when lazy matches like some or all are used 
  - throw an error when value capture is used in multiple places
  - readme file
  - license file
  - make cons reasonably fast
  - better inline docs
+ - check equality when same capture value used in many places
+ - have a pattern that matches anything?
+ - put the classes in a logical order, possibly in separate files
 """
 
 class MatchExpression():
@@ -45,7 +47,7 @@ class MatchEq(MatchExpression):
         self.value = value
 
 
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         return value == self.value
 
 eq = MatchEq
@@ -59,11 +61,11 @@ class MatchOb(MatchExpression):
         self.patterns = patterns
         
 
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         for attr, pattern in self.patterns.iteritems():
             if not hasattr(value, attr):
                 return False
-            if not match_recur(pattern, getattr(value, attr), match_values_box):
+            if not match_recur(pattern, getattr(value, attr), match_values_box, cap_val):
                 return False
         return True
     
@@ -75,11 +77,11 @@ class MatchDict(MatchExpression):
         self.patterns = patterns
 
 
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         for attr, pattern in self.patterns.iteritems():
             if attr not in value:
                 return False
-            if not match_recur(pattern, value[attr], match_values_box):
+            if not match_recur(pattern, value[attr], match_values_box, cap_val):
                 return False
         return True
 
@@ -96,7 +98,7 @@ class MatchType(MatchExpression):
     def __init__(self, type):
         self.type = type
 
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         return isinstance(value, self.type)
 
 type_is = MatchType
@@ -118,7 +120,7 @@ class MatchPredicate(MatchExpression):
     def __init__(self, fun):
         self.fun = fun
 
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         return self.fun(value)
 
 pred = MatchPredicate
@@ -154,12 +156,12 @@ class MatchCons(MatchExpression):
         self.car_pattern = car_pattern
         self.cdr_pattern = cdr_pattern
     
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         if type(value) is not list:
             return False
         
-        if match_recur(self.car_pattern, value[0], match_values_box):
-            return match_recur(self.cdr_pattern, value[1:], match_values_box)
+        if match_recur(self.car_pattern, value[0], match_values_box, cap_val):
+            return match_recur(self.cdr_pattern, value[1:], match_values_box, cap_val)
 
         return False
 
@@ -190,20 +192,23 @@ class ValueBox(MatchExpression):
     
     """
 
-    def __init__(self, match_values=None):
-        self.value = None
+    def __init__(self, name, match_values=None):
+        self.name = name
         self.match_values = match_values
 
     def get(self):
         return self.value
 
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         if len(match_values_box) != 0:
-            assert match_values_box[0] is self.match_values
+            pass
         elif self.match_values is not None:
             match_values_box.append(self.match_values)
-        self.value = value
+        cap_val[self.name] = value
         return True
+
+    def __repr__(self):
+        return "<ValueBox: %s>" % repr(self.value)
 
 
 class MatchAll(MatchExpression):
@@ -233,9 +238,9 @@ class MatchAll(MatchExpression):
     def __init__(self, *patterns):
         self.patterns = patterns
 
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         for pattern in self.patterns:
-            if not match_recur(pattern, value, match_values_box):
+            if not match_recur(pattern, value, match_values_box, cap_val):
                 return False
         return True
 
@@ -260,14 +265,15 @@ class MatchSome(MatchExpression):
     def __init__(self, *patterns):
         self.patterns = patterns
     
-    def match(self, value, match_values_box):
+    def match(self, value, match_values_box, cap_val):
         for pattern in self.patterns:
-            if match_recur(pattern, value, match_values_box):
+            new_cap_val = dict(cap_val)
+            if match_recur(pattern, value, match_values_box, new_cap_val):
+                cap_val.update(new_cap_val)
                 return True
         return False
 
 some = MatchSome
-
 
 class CapturedValues():
     """
@@ -290,24 +296,24 @@ class CapturedValues():
 
     def __getattr__(self, name):
         if self._read_mode:
-            return self._values[name].get()
-        else:
-            if name not in self._values:
-                self._values[name] = ValueBox(self)
             return self._values[name]
+        else:
+            return ValueBox(name, self)
 
-    def _close(self):
+    def _close(self, values):
+        self._values = values
         self._read_mode = True
 
     def _destroy(self):
-        # TODO: set a flag here and raise an better exception when __getattr__ is called
         self._values = {}
         self._read_mode = True
 
     def _clear(self):
-        self._values = {}
+        self._values = None
         self._read_mode = False
 
+    def __repr__(self):
+        return "<CapturedValues>"
 
 def match(pattern, subject):
     """
@@ -324,23 +330,24 @@ def match(pattern, subject):
 
     """
     match_values_box = []
-    matched = match_recur(pattern, subject, match_values_box)
+    cap_val = {}
+    matched = match_recur(pattern, subject, match_values_box, cap_val)
     if len(match_values_box) != 0:
         if matched:
-            match_values_box[0]._close()
+            match_values_box[0]._close(cap_val)
         else:
             match_values_box[0]._destroy()
     return matched
 
 
-def match_recur(pattern, subject, match_values_box):
+def match_recur(pattern, subject, match_values_box, cap_val):
     """
     Recursive match function. Shouldn't be called directly
     except from match.
     """
 
     if isinstance(pattern, MatchExpression):
-        return pattern.match(subject, match_values_box)
+        return pattern.match(subject, match_values_box, cap_val)
     
     if pattern == subject:
         return True
@@ -354,7 +361,7 @@ def match_recur(pattern, subject, match_values_box):
                 return False
             else:
                 for p, s in zip(pattern, subject):
-                    if not match_recur(p, s, match_values_box):
+                    if not match_recur(p, s, match_values_box, cap_val):
                         return False
                 return True
         else:

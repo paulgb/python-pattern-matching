@@ -37,7 +37,6 @@ class TestPatmatch(unittest.TestCase):
         assert not match([(cv.a, cv.b), int], [(5, "bar"), "foo"])
         try:
             l = cv.a
-            print cv._values
             assert False
         except KeyError:
             pass
@@ -58,7 +57,6 @@ class TestPatmatch(unittest.TestCase):
         self.assertEquals(4, cv.a)
         assert not match(all(cv.a, int), 9)
         assert match(all(), 4)
-
     
     def testSome(self):
         cv = CapturedValues()
@@ -71,6 +69,15 @@ class TestPatmatch(unittest.TestCase):
         assert match(some((cv.a, (cv.b, (cv.c, ()))), [cv.a, cv.b, cv.c]), (1, (2, (3, ()))))
         self.assertEquals(1, cv.a)
 
+        cv = CapturedValues()
+        assert match(some((cv.a, (cv.b, (cv.c, ()))), [cv.d, cv.e, cv.f]), [1, 2, 3])
+        self.assertEquals(1, cv.d)
+        
+        try:
+            cv.a
+            assert False
+        except KeyError:
+            pass
 
     def testPredicate(self):
         assert match(pred(lambda x: x > 4), 7)
@@ -134,13 +141,24 @@ class TestPatmatch(unittest.TestCase):
         self.assertEquals(3, cv.baz)
         
 
+    def testSOmething(self):
+        pass
+        #cv = CapturedValues()
+        #assert match((cv.a, some(0, cv.b)), (8, 4))
+        #print cv._values
+        #import sys
+        #sys.exit()
+
+"""
 class TestCapturedValues(unittest.TestCase):
     def testSimple(self):
+        print "TestSimple"
         cv = CapturedValues()
         k = cv.k
         k.match(7, [])
         cv._close()
         self.assertEquals(7, cv.k)
+"""
 
 if __name__ == '__main__':
     unittest.main()
