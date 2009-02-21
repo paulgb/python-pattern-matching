@@ -139,26 +139,16 @@ class TestPatmatch(unittest.TestCase):
         assert match(dt(foo=cv.foo, baz=(1, cv.baz)), {'foo': 6, 'bar': 9, 'baz': (1, 3)})
         self.assertEquals(6, cv.foo)
         self.assertEquals(3, cv.baz)
-        
 
-    def testSOmething(self):
-        pass
-        #cv = CapturedValues()
-        #assert match((cv.a, some(0, cv.b)), (8, 4))
-        #print cv._values
-        #import sys
-        #sys.exit()
-
-"""
-class TestCapturedValues(unittest.TestCase):
-    def testSimple(self):
-        print "TestSimple"
+    def testMultipleUses(self):
         cv = CapturedValues()
-        k = cv.k
-        k.match(7, [])
-        cv._close()
-        self.assertEquals(7, cv.k)
-"""
+        assert match((cv.a, cv.b, cv.a), (1, 2, 1))
+        self.assertEquals(1, cv.a)        
+        self.assertEquals(2, cv.b)        
+
+        cv = CapturedValues()
+        assert not match((cv.a, cv.b, cv.a), (1, 2, 3))
+
 
 if __name__ == '__main__':
     unittest.main()

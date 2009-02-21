@@ -12,12 +12,10 @@ bzip license
 VERSION 0.1
 
 TODO:
- - throw an error when value capture is used in multiple places
  - readme file
  - license file
  - make cons reasonably fast
  - better inline docs
- - check equality when same capture value used in many places
  - have a pattern that matches anything?
  - put the classes in a logical order, possibly in separate files
 """
@@ -204,8 +202,12 @@ class ValueBox(MatchExpression):
             pass
         elif self.match_values is not None:
             match_values_box.append(self.match_values)
-        cap_val[self.name] = value
-        return True
+
+        if self.name in cap_val:
+            return cap_val[self.name] == value
+        else:
+            cap_val[self.name] = value
+            return True
 
     def __repr__(self):
         return "<ValueBox: %s>" % repr(self.value)
