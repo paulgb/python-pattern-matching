@@ -15,9 +15,68 @@ TODO:
  - readme file
  - license file
  - make cons reasonably fast
- - put the classes in a logical order, possibly in separate files
  - make into a python module
 """
+
+## Main match() method
+
+def match(pattern, subject):
+    """
+    Determine if the given subject matches the given pattern.
+
+    May have additional side-effects such as capturing values
+    from the subject.
+
+    Examples:
+    >>> match([1, int, (str, bool)], [1, 2, ("foo", False)])
+    True
+    >>> match([1, int, (str, bool)], [1, "bar", ("foo", False)])
+    False
+    """
+
+    match_values_box = []
+    cap_val = {}
+    matched = match_recur(pattern, subject, match_values_box, cap_val)
+    if len(match_values_box) != 0:
+        if matched:
+            match_values_box[0]._close(cap_val)
+        else:
+            match_values_box[0]._destroy()
+    return matched
+
+
+
+def match_recur(pattern, subject, match_values_box, cap_val):
+    """
+    Recursive match function. Shouldn't be called directly
+    except from match.
+    """
+
+    if isinstance(pattern, MatchPattern):
+        return pattern.match(subject, match_values_box, cap_val)
+    
+    if pattern == subject:
+        return True
+
+    if isinstance(pattern, type):
+        return type(subject) is pattern
+
+    if type(pattern) in [list, tuple]:
+        if type(subject) is type(pattern):
+            if len(pattern) != len(subject):
+                return False
+            else:
+                for p, s in zip(pattern, subject):
+                    if not match_recur(p, s, match_values_box, cap_val):
+                        return False
+                return True
+        else:
+            return False
+
+    return False
+
+
+## Match Patterns
 
 class MatchPattern():
     """
@@ -217,7 +276,6 @@ class MatchCons(MatchPattern):
     
     >>> match(cons(1, cons(2, [])), [1, 2])
     True
-
     """
     
     
@@ -238,40 +296,6 @@ class MatchCons(MatchPattern):
 
 
 cons = MatchCons
-
-
-
-class ValueBox(MatchPattern):
-    """
-    A match expression that will match any expression and store
-    its value in cap_val. This is the mechanism used for value
-    capture.
-    """
-
-    def __init__(self, name, match_values=None):
-        self.name = name
-        self.match_values = match_values
-
-
-    def get(self):
-        return self.value
-
-
-    def match(self, value, match_values_box, cap_val):
-        if len(match_values_box) != 0:
-            pass
-        elif self.match_values is not None:
-            match_values_box.append(self.match_values)
-
-        if self.name in cap_val:
-            return cap_val[self.name] == value
-        else:
-            cap_val[self.name] = value
-            return True
-
-
-    def __repr__(self):
-        return "<ValueBox: %s>" % repr(self.value)
 
 
 
@@ -344,6 +368,41 @@ class MatchSome(MatchPattern):
 some = MatchSome
 
 
+## Value Capture
+
+class ValueBox(MatchPattern):
+    """
+    A match expression that will match any expression and store
+    its value in cap_val. This is the mechanism used for value
+    capture.
+    """
+
+    def __init__(self, name, match_values=None):
+        self.name = name
+        self.match_values = match_values
+
+
+    def get(self):
+        return self.value
+
+
+    def match(self, value, match_values_box, cap_val):
+        if len(match_values_box) != 0:
+            pass
+        elif self.match_values is not None:
+            match_values_box.append(self.match_values)
+
+        if self.name in cap_val:
+            return cap_val[self.name] == value
+        else:
+            cap_val[self.name] = value
+            return True
+
+
+    def __repr__(self):
+        return "<ValueBox: %s>" % repr(self.value)
+
+
 
 class CapturedValues():
     """
@@ -389,61 +448,4 @@ class CapturedValues():
 
     def __repr__(self):
         return "<CapturedValues>"
-
-
-
-def match(pattern, subject):
-    """
-    Determine if the given subject matches the given pattern.
-
-    May have additional side-effects such as capturing values
-    from the subject.
-
-    Examples:
-    >>> match([1, int, (str, bool)], [1, 2, ("foo", False)])
-    True
-    >>> match([1, int, (str, bool)], [1, "bar", ("foo", False)])
-    False
-    """
-
-    match_values_box = []
-    cap_val = {}
-    matched = match_recur(pattern, subject, match_values_box, cap_val)
-    if len(match_values_box) != 0:
-        if matched:
-            match_values_box[0]._close(cap_val)
-        else:
-            match_values_box[0]._destroy()
-    return matched
-
-
-
-def match_recur(pattern, subject, match_values_box, cap_val):
-    """
-    Recursive match function. Shouldn't be called directly
-    except from match.
-    """
-
-    if isinstance(pattern, MatchPattern):
-        return pattern.match(subject, match_values_box, cap_val)
-    
-    if pattern == subject:
-        return True
-
-    if isinstance(pattern, type):
-        return type(subject) is pattern
-
-    if type(pattern) in [list, tuple]:
-        if type(subject) is type(pattern):
-            if len(pattern) != len(subject):
-                return False
-            else:
-                for p, s in zip(pattern, subject):
-                    if not match_recur(p, s, match_values_box, cap_val):
-                        return False
-                return True
-        else:
-            return False
-
-    return False
 
