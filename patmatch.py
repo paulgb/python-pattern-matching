@@ -135,7 +135,7 @@ class MatchOb(MatchPattern):
     >>> class Animal:
     ...     legs = None
     ...     habitat = None
-    >>> fish = Animal
+    >>> fish = Animal()
     >>> fish.habitat = 'water'
     >>> fish.legs = 0
     >>> match(ob(Animal), fish)
@@ -158,6 +158,8 @@ class MatchOb(MatchPattern):
         
 
     def match(self, value, match_values_box, cap_val):
+        if self.cls and not isinstance(value, self.cls):
+            return False
         for attr, pattern in self.patterns.iteritems():
             if not hasattr(value, attr):
                 return False
@@ -448,4 +450,30 @@ class CapturedValues():
 
     def __repr__(self):
         return "<CapturedValues>"
+
+
+# Efficient cons slicing
+# NOT DONE SOME OF THE MATH IS WRONG
+
+class ListSlice:
+    def __init__(lst, start, end=None):
+        self.lst = lst
+        self.start = start
+        self.end = end
+
+    def __get__(self, index):
+        if self.end and index + self.start > self.end:
+            raise IndexError, 'list index out of range'
+        return self.lst[self.start + index]
+
+    def __len__(self):
+        if self.end is not None:
+            return self.end - self.start
+        return len(self.lst) - self.start
+
+    def slice(start, end):
+        return ListSlice(self.lst, self.start + start, self.start + self.end)
+
+    def cons_split(self):
+        return self.slice(0,1), self.slice(1)
 

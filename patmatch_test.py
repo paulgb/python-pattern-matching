@@ -132,6 +132,9 @@ class TestPatmatch(unittest.TestCase):
                 self.publisher = publisher
                 self.location = location
 
+        class Film:
+            pass
+
         jazz = Book("Tales of the Jazz Age", "F. Scott Fitzgerald", 1922)
         selfish = Book("The Selfish Gene", "Richard Dawkins",
             1976, "Oxford", "London")
@@ -157,6 +160,8 @@ class TestPatmatch(unittest.TestCase):
         cv = CapturedValues()
         assert not match(ob(Book, title=cv.title, author="Robertson Davies",
           year=pred(lambda x: x > 1970)), selfish)
+
+        assert not match(ob(Book), Film())
 
 
     def testDict(self):
